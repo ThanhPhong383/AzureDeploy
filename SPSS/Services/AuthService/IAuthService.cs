@@ -5,9 +5,14 @@ namespace SPSS.Services.AuthService
 {
     public interface IAuthService
     {
-        Task<User?> RegisterAsync(UserDto request);
+        Task<AppUser?> RegisterAsync(UserDto request);
+
         Task<TokenResponseDto?> LoginAsync(UserDto request);
 
         Task<TokenResponseDto?> RefreshTokensAsync(RefreshTokenRequestDto request);
+
+        Task<string> AssignRoleToUserAsync(string username, string role);
+
+        Task<string> AddRoleAsync(string roleName);
     }
 }
