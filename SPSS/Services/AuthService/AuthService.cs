@@ -1,7 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Validations;
 using SPSS.Data;
 using SPSS.Dto;
 using SPSS.Entities;
@@ -12,24 +10,80 @@ using System.Text;
 
 namespace SPSS.Services.AuthService
 {
-    public class AuthService(AppDbContext context, IConfiguration configuration) : IAuthService
+    public class AuthService(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, RoleManager<IdentityRole> roleManager, IConfiguration configuration) : IAuthService
     {
-        public async Task<TokenResponseDto> LoginAsync(UserDto request)
+        private readonly UserManager<AppUser> _userManager = userManager;
+        private readonly SignInManager<AppUser> _signInManager = signInManager;
+        private readonly RoleManager<IdentityRole> _roleManager = roleManager;
+        private readonly IConfiguration _configuration = configuration;
+
+        // 🟢 Đăng ký tài khoản (Mặc định không có Role)
+        public async Task<AppUser?> RegisterAsync(UserDto request)
         {
-            var user = await context.Users.FirstOrDefaultAsync(x => x.Username == request.Username);
-            if (user is null)
+            if (await _userManager.FindByNameAsync(request.Username) != null)
+                throw new Exception("Username already exists.");
+
+            var user = new AppUser
             {
-                return null;
-            }
-            if (new PasswordHasher<User>().VerifyHashedPassword(user, user.PasswordHash, request.Password) == PasswordVerificationResult.Failed)
-            {
-                return null;
-            }
+                UserName = request.Username
+            };
+
+            var result = await _userManager.CreateAsync(user, request.Password);
+            if (!result.Succeeded)
+                throw new Exception($"Registration failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+
+            // 🔹 Không gán Role mặc định, user sẽ có Role sau khi gọi API `assign-role`
+            return user;
+        }
+
+        // 🟢 Thêm vai trò mới (Role) vào hệ thống
+public async Task<string> AddRoleAsync(string roleName)
+{
+    // Kiểm tra xem vai trò đã tồn tại chưa
+    var roleExists = await _roleManager.RoleExistsAsync(roleName);
+    if (roleExists)
+        throw new Exception("Role already exists.");
+
+    // Tạo mới vai trò
+    var role = new IdentityRole(roleName);
+    var result = await _roleManager.CreateAsync(role);
+    if (!result.Succeeded)
+        throw new Exception($"Failed to create role: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+
+    return "Role created successfully.";
+}
+
+
+        // 🟢 Gán Role cho user (Chỉ khi API `assign-role` được gọi)
+        public async Task<string> AssignRoleToUserAsync(string username, string role)
+        {
+            var user = await _userManager.FindByNameAsync(username);
+            if (user == null)
+                throw new Exception("User not found.");
+
+            if (!await _roleManager.RoleExistsAsync(role))
+                throw new Exception("Role does not exist.");
+
+            await _userManager.AddToRoleAsync(user, role);
+            return "Role assigned successfully.";
+        }
+
+        // 🟢 Đăng nhập
+        public async Task<TokenResponseDto?> LoginAsync(UserDto request)
+        {
+            var user = await _userManager.FindByNameAsync(request.Username);
+            if (user == null)
+                throw new Exception("Invalid username or password.");
+
+            var result = await _signInManager.PasswordSignInAsync(user, request.Password, false, false);
+            if (!result.Succeeded)
+                throw new Exception("Invalid username or password.");
 
             return await CreateTokenResponse(user);
         }
 
-        private async Task<TokenResponseDto> CreateTokenResponse(User? user)
+        // 🟢 Tạo phản hồi Token (AccessToken + RefreshToken)
+        private async Task<TokenResponseDto> CreateTokenResponse(AppUser user)
         {
             return new TokenResponseDto
             {
@@ -38,45 +92,57 @@ namespace SPSS.Services.AuthService
             };
         }
 
-        public async Task<User?> RegisterAsync(UserDto request)
-        {
-            if (await context.Users.AnyAsync(x => x.Username == request.Username))
-            {
-                return null;
-            }
-
-            var user = new User();
-            var hashedPassword = new PasswordHasher<User>().HashPassword(user, request.Password);
-
-            user.Username = request.Username;
-            user.PasswordHash = hashedPassword;
-
-            context.Users.Add(user);
-            await context.SaveChangesAsync();
-
-            return user;
-        }
-
+        // 🟢 Làm mới Token
         public async Task<TokenResponseDto?> RefreshTokensAsync(RefreshTokenRequestDto request)
         {
-            var user = await ValidateRefreshTokenAsync(request.UserId, request.RefreshToken);
-            if (user is null)
-            {
-                return null;
-            }
+            var user = await _userManager.FindByIdAsync(request.UserId.ToString());
+            if (user == null)
+                throw new Exception("Invalid refresh token.");
+
+            if (user.RefreshToken != request.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+                throw new Exception("Refresh token expired or invalid.");
+
             return await CreateTokenResponse(user);
         }
 
-        private async Task<User?> ValidateRefreshTokenAsync(Guid userId, string refreshToken)
+        // 🔵 Tạo và lưu RefreshToken vào DB
+        private async Task<string> GenerateAndSaveRefreshToken(AppUser user)
         {
-            var user = await context.Users.FindAsync(userId);
-            if (user is null || user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
-            {
-                return null;
-            }
-            return user;
+            var refreshToken = GenerateRefreshToken();
+            user.RefreshToken = refreshToken;
+            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+            await _userManager.UpdateAsync(user);
+            return refreshToken;
         }
 
+        // 🔴 Tạo JWT Token (Không có Role nếu chưa được gán)
+        private string CreateToken(AppUser user)
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, user.UserName),
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
+            };
+
+            var secretKey = _configuration["AppSettings:Token"];
+            if (string.IsNullOrEmpty(secretKey))
+                throw new Exception("JWT Secret Key is missing in appsettings.json.");
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512);
+
+            var tokenDescriptor = new JwtSecurityToken(
+                issuer: _configuration["AppSettings:Issuer"],
+                audience: _configuration["AppSettings:Audience"],
+                claims: claims,
+                expires: DateTime.UtcNow.AddDays(1),
+                signingCredentials: creds
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
+        }
+
+        // 🔵 Tạo RefreshToken ngẫu nhiên
         private string GenerateRefreshToken()
         {
             var randomNumber = new byte[32];
@@ -84,40 +150,5 @@ namespace SPSS.Services.AuthService
             rng.GetBytes(randomNumber);
             return Convert.ToBase64String(randomNumber);
         }
-
-        private async Task<string> GenerateAndSaveRefreshToken(User user)
-        {
-            var refreshToken = GenerateRefreshToken();
-            user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiryTime = DateTime.Now.AddDays(7);
-            await context.SaveChangesAsync();
-            return refreshToken;
-        }
-
-        private string CreateToken(User user)
-        {
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Role, user.Role)
-            };
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration.GetValue<string>("AppSettings:Token")!));
-
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512);
-
-            var tokenDescriptor = new JwtSecurityToken(
-                issuer: configuration.GetValue<string>("AppSettings:Issuer"),
-                audience: configuration.GetValue<string>("AppSettings:Audience"),
-                claims: claims,
-                expires: DateTime.Now.AddDays(1),
-                signingCredentials: creds
-            );
-
-            return new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
-        }
-
-
     }
 }
