@@ -7,7 +7,9 @@ namespace SPSS.Services.AuthService
     {
         Task<AppUser?> RegisterAsync(UserDto request);
 
-        Task<TokenResponseDto?> LoginAsync(UserDto request);
+        Task<TokenResponseDto?> LoginAsync(LoginDto request);
+
+        Task<string> LogoutAsync(string username);
 
         Task<TokenResponseDto?> RefreshTokensAsync(RefreshTokenRequestDto request);
 
