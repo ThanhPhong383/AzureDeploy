@@ -5,19 +5,17 @@ using SPSS.Dto;
 using SPSS.Entities;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Security.Cryptography; 
+using System.Security.Cryptography;
 using System.Text;
 
 namespace SPSS.Services.AuthService
 {
     public class AuthService(UserManager<AppUser> _userManager, SignInManager<AppUser> _signInManager, RoleManager<IdentityRole> _roleManager, IConfiguration _configuration) : IAuthService
     {
-        // 🟢 Đăng ký tài khoản 
         public async Task<AppUser?> RegisterAsync(UserDto request)
         {
             if (await _userManager.FindByNameAsync(request.Username) != null)
                 throw new Exception("Username already exists.");
-
 
             if (await _userManager.FindByEmailAsync(request.Email) != null)
                 throw new Exception("Email already exists.");
@@ -25,7 +23,8 @@ namespace SPSS.Services.AuthService
             var user = new AppUser
             {
                 UserName = request.Username,
-                Email = request.Email
+                Email = request.Email,
+                EmailConfirmed = false // Đảm bảo người dùng phải xác nhận email sau khi đăng ký
             };
 
             var result = await _userManager.CreateAsync(user, request.Password);
@@ -35,8 +34,6 @@ namespace SPSS.Services.AuthService
             return user;
         }
 
-
-        // 🟢 Thêm vai trò mới (Role) vào hệ thống
         public async Task<string> AddRoleAsync(string roleName)
         {
             var roleExists = await _roleManager.RoleExistsAsync(roleName);
@@ -51,8 +48,6 @@ namespace SPSS.Services.AuthService
             return "Role created successfully.";
         }
 
-
-        // 🟢 Gán Role cho user 
         public async Task<string> AssignRoleToUserAsync(string username, string role)
         {
             var user = await _userManager.FindByNameAsync(username);
@@ -66,7 +61,6 @@ namespace SPSS.Services.AuthService
             return "Role assigned successfully.";
         }
 
-        // 🟢 Đăng nhập
         public async Task<TokenResponseDto?> LoginAsync(LoginDto request)
         {
             var user = await _userManager.FindByNameAsync(request.Username);
@@ -77,10 +71,12 @@ namespace SPSS.Services.AuthService
             if (!result.Succeeded)
                 throw new Exception("Invalid username or password.");
 
-            return await CreateTokenResponse(user);
+            var tokenResponse = await CreateTokenResponse(user);
+            tokenResponse.EmailConfirmed = user.EmailConfirmed; // Bao gồm trạng thái xác nhận email
+
+            return tokenResponse;
         }
 
-        // 🟢 Đăng xuất
         public async Task<string> LogoutAsync(string username)
         {
             var user = await _userManager.FindByNameAsync(username);
@@ -96,18 +92,16 @@ namespace SPSS.Services.AuthService
             return "Logout successful.";
         }
 
-
-        // 🟢 Tạo phản hồi Token (AccessToken + RefreshToken)
         private async Task<TokenResponseDto> CreateTokenResponse(AppUser user)
         {
             return new TokenResponseDto
             {
                 AccessToken = CreateToken(user),
-                RefreshToken = await GenerateAndSaveRefreshToken(user)
+                RefreshToken = await GenerateAndSaveRefreshToken(user),
+                EmailConfirmed = user.EmailConfirmed // Thêm trạng thái xác nhận email vào token response
             };
         }
 
-        // 🟢 Làm mới Token
         public async Task<TokenResponseDto?> RefreshTokensAsync(RefreshTokenRequestDto request)
         {
             var user = await _userManager.FindByIdAsync(request.UserId.ToString());
@@ -120,7 +114,6 @@ namespace SPSS.Services.AuthService
             return await CreateTokenResponse(user);
         }
 
-        // 🔵 Tạo và lưu RefreshToken vào DB
         private async Task<string> GenerateAndSaveRefreshToken(AppUser user)
         {
             var refreshToken = GenerateRefreshToken();
@@ -130,14 +123,15 @@ namespace SPSS.Services.AuthService
             return refreshToken;
         }
 
-        // 🔴 Tạo JWT Token (Không có Role nếu chưa được gán)
         private string CreateToken(AppUser user)
         {
             var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, user.UserName),
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
-            };
+    {
+        new Claim(ClaimTypes.Name, user.UserName),
+        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+        new Claim(ClaimTypes.Email, user.Email), 
+        new Claim("EmailConfirmed", user.EmailConfirmed.ToString()) // Thêm trạng thái xác nhận email vào JWT
+    };
 
             var secretKey = _configuration["AppSettings:Token"];
             if (string.IsNullOrEmpty(secretKey))
@@ -157,7 +151,6 @@ namespace SPSS.Services.AuthService
             return new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
         }
 
-        // 🔵 Tạo RefreshToken ngẫu nhiên
         private string GenerateRefreshToken()
         {
             var randomNumber = new byte[32];
