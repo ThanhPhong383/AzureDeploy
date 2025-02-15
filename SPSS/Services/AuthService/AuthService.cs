@@ -1,7 +1,10 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.Data;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.IdentityModel.Tokens;
 using SPSS.Data;
 using SPSS.Dto;
+using SPSS.Dto.Account;
 using SPSS.Entities;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -10,7 +13,7 @@ using System.Text;
 
 namespace SPSS.Services.AuthService
 {
-    public class AuthService(UserManager<AppUser> _userManager, SignInManager<AppUser> _signInManager, RoleManager<IdentityRole> _roleManager, IConfiguration _configuration) : IAuthService
+    public class AuthService(UserManager<AppUser> _userManager, SignInManager<AppUser> _signInManager, RoleManager<IdentityRole> _roleManager, IConfiguration _configuration, IEmailService _emailService) : IAuthService
     {
         public async Task<AppUser?> RegisterAsync(UserDto request)
         {
@@ -24,7 +27,7 @@ namespace SPSS.Services.AuthService
             {
                 UserName = request.Username,
                 Email = request.Email,
-                EmailConfirmed = false // Đảm bảo người dùng phải xác nhận email sau khi đăng ký
+                EmailConfirmed = false
             };
 
             var result = await _userManager.CreateAsync(user, request.Password);
@@ -72,7 +75,7 @@ namespace SPSS.Services.AuthService
                 throw new Exception("Invalid username or password.");
 
             var tokenResponse = await CreateTokenResponse(user);
-            tokenResponse.EmailConfirmed = user.EmailConfirmed; // Bao gồm trạng thái xác nhận email
+            tokenResponse.EmailConfirmed = user.EmailConfirmed;
 
             return tokenResponse;
         }
@@ -92,13 +95,69 @@ namespace SPSS.Services.AuthService
             return "Logout successful.";
         }
 
+        public async Task<string> ChangePasswordAsync(string username, ChangePasswordDto request)
+        {
+            if (request.NewPassword != request.ConfirmNewPassword)
+                throw new Exception("New password and confirm password do not match.");
+
+            var user = await _userManager.FindByNameAsync(username);
+            if (user == null)
+                throw new Exception("User not found.");
+
+            var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+            if (!result.Succeeded)
+                throw new Exception($"Password change failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+
+            return "Password changed successfully.";
+        }
+        public async Task<string> ForgotPassword(ForgotPasswordDto request)
+        {
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+                throw new Exception("User not found.");
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var resetLink = $"{_configuration["AppSettings:ClientUrl"]}/reset-password?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(request.Email)}";
+
+            var message = new MessageOTP(
+                new string[] { request.Email },
+                "Password Reset Request",
+                $@"
+        <h1>Password Reset</h1>
+        <p>Dear {request.Email},</p>
+        <p>Click the link below to reset your password:</p>
+        <p><a href='{resetLink}'>Reset Password</a></p>
+        <p>The link is valid for a limited time.</p>"
+            );
+
+            _emailService.SendEmail(message);
+            return "Password reset email sent.";
+        }
+
+        public async Task<string> ResetPassword(ResetPasswordDto request)
+        {
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+                throw new Exception("User not found.");
+
+            var result = await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                throw new Exception($"Password reset failed: {errors}");
+            }
+
+            return "Password has been reset successfully.";
+        }
+
+
         private async Task<TokenResponseDto> CreateTokenResponse(AppUser user)
         {
             return new TokenResponseDto
             {
                 AccessToken = CreateToken(user),
                 RefreshToken = await GenerateAndSaveRefreshToken(user),
-                EmailConfirmed = user.EmailConfirmed // Thêm trạng thái xác nhận email vào token response
+                EmailConfirmed = user.EmailConfirmed
             };
         }
 
@@ -129,8 +188,8 @@ namespace SPSS.Services.AuthService
     {
         new Claim(ClaimTypes.Name, user.UserName),
         new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-        new Claim(ClaimTypes.Email, user.Email), 
-        new Claim("EmailConfirmed", user.EmailConfirmed.ToString()) // Thêm trạng thái xác nhận email vào JWT
+        new Claim(ClaimTypes.Email, user.Email),
+        new Claim("EmailConfirmed", user.EmailConfirmed.ToString())
     };
 
             var secretKey = _configuration["AppSettings:Token"];
