@@ -7,8 +7,15 @@ namespace SPSS.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AuthController(IAuthService authService) : ControllerBase
+    public class AuthController (IAuthService authService   ) : ControllerBase
     {
+        //private readonly IAuthService authService;
+
+        //public AuthController(IAuthService authService)
+        //{
+        //    this.authService = authService;
+        //}
+
         // 🟢 Đăng ký tài khoản
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] UserDto request)
@@ -20,7 +27,7 @@ namespace SPSS.Controllers
             {
                 var user = await authService.RegisterAsync(request);
                 if (user == null)
-                    return BadRequest(new { Error = "Registration failed. User may already exist." });
+                    return Conflict(new { Error = "Registration failed. User may already exist." }); 
 
                 return Ok(new
                 {
@@ -31,13 +38,13 @@ namespace SPSS.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Error = "An unexpected error occurred.", Details = ex.Message });
+                return BadRequest(new { Error = "An unexpected error occurred.", Details = ex.Message }); 
             }
         }
 
         // 🟢 Đăng nhập
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] UserDto request)
+        public async Task<IActionResult> Login([FromBody] LoginDto request)
         {
             if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
                 return BadRequest(new { Error = "Username and password cannot be empty." });
@@ -52,7 +59,27 @@ namespace SPSS.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Error = "An unexpected error occurred.", Details = ex.Message });
+                return BadRequest(new { Error = "An unexpected error occurred.", Details = ex.Message }); 
+            }
+        }
+
+        // 🟢 Đăng xuất
+        [Authorize]
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            var username = User.Identity?.Name;
+            if (string.IsNullOrEmpty(username))
+                return Unauthorized(new { Error = "You need to be logged in to logout." });
+
+            try
+            {
+                var result = await authService.LogoutAsync(username);
+                return Ok(new { Message = result });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = "An unexpected error occurred.", Details = ex.Message }); 
             }
         }
 
@@ -73,7 +100,7 @@ namespace SPSS.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Error = "An unexpected error occurred.", Details = ex.Message });
+                return BadRequest(new { Error = "An unexpected error occurred.", Details = ex.Message }); 
             }
         }
 
@@ -91,7 +118,7 @@ namespace SPSS.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Error = "An unexpected error occurred.", Details = ex.Message });
+                return BadRequest(new { Error = "An unexpected error occurred.", Details = ex.Message }); 
             }
         }
 
@@ -109,7 +136,7 @@ namespace SPSS.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Error = "An unexpected error occurred.", Details = ex.Message });
+                return BadRequest(new { Error = "An unexpected error occurred.", Details = ex.Message }); 
             }
         }
 

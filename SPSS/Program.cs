@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Scalar.AspNetCore;
 using SPSS.Data;
 using SPSS.Entities;
 using SPSS.Services.AuthService;
