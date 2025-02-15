@@ -5,56 +5,54 @@ using SPSS.Dto;
 using SPSS.Entities;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Security.Cryptography;
+using System.Security.Cryptography; 
 using System.Text;
 
 namespace SPSS.Services.AuthService
 {
-    public class AuthService(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, RoleManager<IdentityRole> roleManager, IConfiguration configuration) : IAuthService
+    public class AuthService(UserManager<AppUser> _userManager, SignInManager<AppUser> _signInManager, RoleManager<IdentityRole> _roleManager, IConfiguration _configuration) : IAuthService
     {
-        private readonly UserManager<AppUser> _userManager = userManager;
-        private readonly SignInManager<AppUser> _signInManager = signInManager;
-        private readonly RoleManager<IdentityRole> _roleManager = roleManager;
-        private readonly IConfiguration _configuration = configuration;
-
-        // 🟢 Đăng ký tài khoản (Mặc định không có Role)
+        // 🟢 Đăng ký tài khoản 
         public async Task<AppUser?> RegisterAsync(UserDto request)
         {
             if (await _userManager.FindByNameAsync(request.Username) != null)
                 throw new Exception("Username already exists.");
 
+
+            if (await _userManager.FindByEmailAsync(request.Email) != null)
+                throw new Exception("Email already exists.");
+
             var user = new AppUser
             {
-                UserName = request.Username
+                UserName = request.Username,
+                Email = request.Email
             };
 
             var result = await _userManager.CreateAsync(user, request.Password);
             if (!result.Succeeded)
                 throw new Exception($"Registration failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
 
-            // 🔹 Không gán Role mặc định, user sẽ có Role sau khi gọi API `assign-role`
             return user;
         }
 
+
         // 🟢 Thêm vai trò mới (Role) vào hệ thống
-public async Task<string> AddRoleAsync(string roleName)
-{
-    // Kiểm tra xem vai trò đã tồn tại chưa
-    var roleExists = await _roleManager.RoleExistsAsync(roleName);
-    if (roleExists)
-        throw new Exception("Role already exists.");
+        public async Task<string> AddRoleAsync(string roleName)
+        {
+            var roleExists = await _roleManager.RoleExistsAsync(roleName);
+            if (roleExists)
+                throw new Exception("Role already exists.");
 
-    // Tạo mới vai trò
-    var role = new IdentityRole(roleName);
-    var result = await _roleManager.CreateAsync(role);
-    if (!result.Succeeded)
-        throw new Exception($"Failed to create role: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+            var role = new IdentityRole(roleName);
+            var result = await _roleManager.CreateAsync(role);
+            if (!result.Succeeded)
+                throw new Exception($"Failed to create role: {string.Join(", ", result.Errors.Select(e => e.Description))}");
 
-    return "Role created successfully.";
-}
+            return "Role created successfully.";
+        }
 
 
-        // 🟢 Gán Role cho user (Chỉ khi API `assign-role` được gọi)
+        // 🟢 Gán Role cho user 
         public async Task<string> AssignRoleToUserAsync(string username, string role)
         {
             var user = await _userManager.FindByNameAsync(username);
@@ -69,7 +67,7 @@ public async Task<string> AddRoleAsync(string roleName)
         }
 
         // 🟢 Đăng nhập
-        public async Task<TokenResponseDto?> LoginAsync(UserDto request)
+        public async Task<TokenResponseDto?> LoginAsync(LoginDto request)
         {
             var user = await _userManager.FindByNameAsync(request.Username);
             if (user == null)
@@ -81,6 +79,23 @@ public async Task<string> AddRoleAsync(string roleName)
 
             return await CreateTokenResponse(user);
         }
+
+        // 🟢 Đăng xuất
+        public async Task<string> LogoutAsync(string username)
+        {
+            var user = await _userManager.FindByNameAsync(username);
+            if (user == null)
+                throw new Exception("User not found.");
+
+            await _signInManager.SignOutAsync();
+
+            user.RefreshToken = null;
+            user.RefreshTokenExpiryTime = null;
+            await _userManager.UpdateAsync(user);
+
+            return "Logout successful.";
+        }
+
 
         // 🟢 Tạo phản hồi Token (AccessToken + RefreshToken)
         private async Task<TokenResponseDto> CreateTokenResponse(AppUser user)
