@@ -1,7 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using SPSS.Dto;
+using SPSS.Dto.Account;
 using SPSS.Services.AuthService;
+using System.Security.Claims;
 
 namespace SPSS.Controllers
 {
@@ -79,6 +82,31 @@ namespace SPSS.Controllers
             }
         }
 
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto request)
+        {
+            if (string.IsNullOrEmpty(request.CurrentPassword) ||
+                string.IsNullOrEmpty(request.NewPassword) ||
+                string.IsNullOrEmpty(request.ConfirmNewPassword))
+            {
+                return BadRequest(new { Error = "All fields are required." });
+            }
+
+            try
+            {
+                var username = User.FindFirst(ClaimTypes.Name)?.Value;
+                if (string.IsNullOrEmpty(username))
+                    return Unauthorized(new { Error = "User not found." });
+
+                var result = await authService.ChangePasswordAsync(username, request);
+                return Ok(new { Message = result });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = "An unexpected error occurred.", Details = ex.Message });
+            }
+        }
+
         [HttpPost("refresh-tokens")]
         public async Task<IActionResult> RefreshTokens([FromBody] RefreshTokenRequestDto request)
         {
@@ -146,5 +174,20 @@ namespace SPSS.Controllers
         {
             return Ok(new { Message = "You are an admin!" });
         }
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto request)
+        {
+            var result = await authService.ForgotPassword(request);
+            return Ok(new { message = result });
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto request)
+        {
+            var result = await authService.ResetPassword(request);
+            return Ok(new { message = result });
+        }
+
     }
 }

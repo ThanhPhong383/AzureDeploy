@@ -1,4 +1,6 @@
-﻿using SPSS.Dto;
+﻿using Microsoft.AspNetCore.Identity.Data;
+using SPSS.Dto;
+using SPSS.Dto.Account;
 using SPSS.Entities;
 
 namespace SPSS.Services.AuthService
@@ -16,5 +18,11 @@ namespace SPSS.Services.AuthService
         Task<string> AssignRoleToUserAsync(string username, string role);
 
         Task<string> AddRoleAsync(string roleName);
+
+        Task<string> ChangePasswordAsync(string username, ChangePasswordDto request);
+
+        Task<string> ForgotPassword(ForgotPasswordDto request);
+
+        Task<string> ResetPassword(ResetPasswordDto request);
     }
 }
