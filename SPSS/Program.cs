@@ -6,7 +6,11 @@ using Microsoft.OpenApi.Models;
 using SPSS.Data;
 using SPSS.Entities;
 using SPSS.Services.AuthService;
+using SPSS.Services;
 using System.Text;
+using Microsoft.Extensions.Options;
+using SPSS.Dto.Account;
+using System.Collections.Concurrent;
 
 namespace SPSS
 {
@@ -16,10 +20,8 @@ namespace SPSS
         {
             var builder = WebApplication.CreateBuilder(args);
 
-         
             builder.Services.AddControllers();
 
-            //builder.Services.AddOpenApi();
             builder.Services.AddEndpointsApiExplorer(); //swagger
             builder.Services.AddSwaggerGen();
 
@@ -84,21 +86,26 @@ namespace SPSS
             });
 
             builder.Services.AddAuthorization();
-
             builder.Services.AddScoped<IAuthService, AuthService>();
+
+            // Cấu hình Email Service
+            var emailConfig = builder.Configuration.GetSection("EmailConfiguration").Get<EmailConfiguration>()
+                  ?? throw new InvalidOperationException("Missing Email Configuration in appsettings.json.");
+
+            builder.Services.Configure<EmailConfiguration>(builder.Configuration.GetSection("EmailConfiguration"));
+            builder.Services.AddSingleton(emailConfig);
+            builder.Services.AddSingleton(new ConcurrentDictionary<string, OtpEntry>());
+            builder.Services.AddTransient<IEmailService, EmailService>();
 
             var app = builder.Build();
 
             if (app.Environment.IsDevelopment())
             {
-                //app.MapOpenApi();
-                //app.MapScalarApiReference();
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
 
             app.UseHttpsRedirection();
-            //app.UseSwaggerUI(o=>o.SwaggerEndpoint("/openapi/v1.json","Swagger Demo"));
             app.UseAuthentication();
             app.UseAuthorization();
 
