@@ -88,6 +88,15 @@ namespace SPSS
             builder.Services.AddAuthorization();
             builder.Services.AddScoped<IAuthService, AuthService>();
 
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyHeader()
+                          .AllowAnyMethod();
+                });
+            });
             // Cấu hình Email Service
             var emailConfig = builder.Configuration.GetSection("EmailConfiguration").Get<EmailConfiguration>()
                   ?? throw new InvalidOperationException("Missing Email Configuration in appsettings.json.");
@@ -97,6 +106,9 @@ namespace SPSS
             builder.Services.AddSingleton(new ConcurrentDictionary<string, OtpEntry>());
             builder.Services.AddTransient<IEmailService, EmailService>();
 
+
+
+
             var app = builder.Build();
 
             if (app.Environment.IsDevelopment())
@@ -105,6 +117,7 @@ namespace SPSS
                 app.UseSwaggerUI();
             }
 
+            app.UseCors("AllowAll");
             app.UseHttpsRedirection();
             app.UseAuthentication();
             app.UseAuthorization();
