@@ -24,5 +24,9 @@ namespace SPSS.Services.AuthService
         Task<string> ForgotPassword(ForgotPasswordDto request);
 
         Task<string> ResetPassword(ResetPasswordDto request);
+
+        Task<TokenResponseDto> GoogleLoginAsync(GoogleUserLoginDTO googleLoginDTO);
+
+        Task<TokenResponseDto> GoogleSetPasswordAsync(SetPasswordDTO request, string token);
     }
 }
