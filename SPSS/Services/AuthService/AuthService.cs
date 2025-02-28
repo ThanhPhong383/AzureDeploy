@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Google.Apis.Auth;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.IdentityModel.Tokens;
@@ -217,5 +218,79 @@ namespace SPSS.Services.AuthService
             rng.GetBytes(randomNumber);
             return Convert.ToBase64String(randomNumber);
         }
+
+        public async Task<TokenResponseDto> GoogleLoginAsync(GoogleUserLoginDTO googleLoginDTO)
+        {
+            var payload = await GoogleJsonWebSignature.ValidateAsync(googleLoginDTO.Token, new GoogleJsonWebSignature.ValidationSettings());
+            if (payload == null)
+                throw new Exception("Invalid Id Token");
+
+            var user = await _userManager.FindByEmailAsync(payload.Email);
+
+            if (user == null)
+            {
+                user = new AppUser
+                {
+                    Email = payload.Email,
+                    UserName = payload.Email,
+                    EmailConfirmed = true
+                };
+
+                var result = await _userManager.CreateAsync(user);
+                if (!result.Succeeded)
+                    throw new Exception("Failed to create user");
+
+                var roleResult = await _userManager.AddToRoleAsync(user, "User");
+
+                var info = new UserLoginInfo("Google", payload.Subject, "Google");
+                var loginResult = await _userManager.AddLoginAsync(user, info);
+                if (!loginResult.Succeeded)
+                    throw new Exception("Failed to add external login");
+            }
+
+            var refreshToken = await GenerateAndSaveRefreshToken(user);
+
+            return new TokenResponseDto
+            {
+                EmailConfirmed = user.EmailConfirmed,
+                AccessToken = CreateToken(user),
+                RefreshToken = refreshToken
+            };
+        }
+
+        public async Task<TokenResponseDto> GoogleSetPasswordAsync(SetPasswordDTO request, string token)
+        {
+            var handler = new JwtSecurityTokenHandler();
+
+            if (!handler.CanReadToken(token))
+                throw new Exception("Invalid token format");
+
+            var jwtToken = handler.ReadJwtToken(token);
+            var email = jwtToken.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Email)?.Value;
+
+            if (string.IsNullOrEmpty(email))
+                throw new Exception("Email claim not found in token");
+
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+                throw new Exception("User not found");
+
+            if (request.Password != request.ConfirmPassword)
+                throw new Exception("Passwords do not match");
+
+            var result = await _userManager.AddPasswordAsync(user, request.Password);
+            if (!result.Succeeded)
+                throw new Exception("Failed to set password");
+
+            var refreshToken = await GenerateAndSaveRefreshToken(user);
+
+            return new TokenResponseDto
+            {
+                EmailConfirmed = user.EmailConfirmed,
+                AccessToken = CreateToken(user),
+                RefreshToken = refreshToken
+            };
+        }
+
     }
 }

@@ -44,19 +44,28 @@ namespace SPSS
 
             var key = Encoding.UTF8.GetBytes(secretKey);
 
-            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidIssuer = builder.Configuration["AppSettings:Issuer"],
-                        ValidateAudience = true,
-                        ValidAudience = builder.Configuration["AppSettings:Audience"],
-                        IssuerSigningKey = new SymmetricSecurityKey(key),
-                        ValidateIssuerSigningKey = true
-                    };
-                });
+                    ValidateIssuer = true,
+                    ValidIssuer = builder.Configuration["AppSettings:Issuer"],
+                    ValidateAudience = true,
+                    ValidAudience = builder.Configuration["AppSettings:Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuerSigningKey = true
+                };
+            })
+            .AddGoogle(options =>
+            {
+                options.ClientId = builder.Configuration["Authentication:Google:ClientId"];
+                options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+            });
 
             builder.Services.AddSwaggerGen(option =>
             {
@@ -88,6 +97,15 @@ namespace SPSS
             builder.Services.AddAuthorization();
             builder.Services.AddScoped<IAuthService, AuthService>();
 
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyHeader()
+                          .AllowAnyMethod();
+                });
+            });
             // Cấu hình Email Service
             var emailConfig = builder.Configuration.GetSection("EmailConfiguration").Get<EmailConfiguration>()
                   ?? throw new InvalidOperationException("Missing Email Configuration in appsettings.json.");
@@ -97,6 +115,9 @@ namespace SPSS
             builder.Services.AddSingleton(new ConcurrentDictionary<string, OtpEntry>());
             builder.Services.AddTransient<IEmailService, EmailService>();
 
+
+
+
             var app = builder.Build();
 
             if (app.Environment.IsDevelopment())
@@ -105,6 +126,7 @@ namespace SPSS
                 app.UseSwaggerUI();
             }
 
+            app.UseCors("AllowAll");
             app.UseHttpsRedirection();
             app.UseAuthentication();
             app.UseAuthorization();
