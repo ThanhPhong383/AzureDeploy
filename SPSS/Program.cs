@@ -44,19 +44,28 @@ namespace SPSS
 
             var key = Encoding.UTF8.GetBytes(secretKey);
 
-            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidIssuer = builder.Configuration["AppSettings:Issuer"],
-                        ValidateAudience = true,
-                        ValidAudience = builder.Configuration["AppSettings:Audience"],
-                        IssuerSigningKey = new SymmetricSecurityKey(key),
-                        ValidateIssuerSigningKey = true
-                    };
-                });
+                    ValidateIssuer = true,
+                    ValidIssuer = builder.Configuration["AppSettings:Issuer"],
+                    ValidateAudience = true,
+                    ValidAudience = builder.Configuration["AppSettings:Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuerSigningKey = true
+                };
+            })
+            .AddGoogle(options =>
+            {
+                options.ClientId = builder.Configuration["Google:ClientId"];
+                options.ClientSecret = builder.Configuration["AGoogle:ClientSecret"];
+            });
 
             builder.Services.AddSwaggerGen(option =>
             {

@@ -63,6 +63,40 @@ namespace SPSS.Controllers
             }
         }
 
+        [HttpPost("google-login")]
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleUserLoginDTO googleLoginDTO)
+        {
+            try
+            {
+                var response = await authService.GoogleLoginAsync(googleLoginDTO);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPost("google-setPassword")]
+        public async Task<IActionResult> GoogleSetPassword([FromBody] SetPasswordDTO setPasswordDTO, [FromHeader(Name = "Authorization")] string authorizationHeader)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(authorizationHeader) || !authorizationHeader.StartsWith("Bearer "))
+                    return BadRequest("Invalid authorization header");
+
+                var token = authorizationHeader.Substring("Bearer ".Length).Trim();
+                var response = await authService.GoogleSetPasswordAsync(setPasswordDTO, token);
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+
         [Authorize]
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
