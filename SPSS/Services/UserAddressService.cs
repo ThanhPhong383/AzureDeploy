@@ -3,18 +3,11 @@ using System.Collections.Generic;
 using SPSS.Entities;
 using SPSS.Repositories.GenericRepository;
 
-public class UserAddressService
+public class UserAddressService (IGenericRepository<UserAddress> repository)
 {
-    private readonly IGenericRepository<UserAddress> _repository;
-
-    public UserAddressService(IGenericRepository<UserAddress> repository)
-    {
-        _repository = repository;
-    }
-
-    public async Task<IEnumerable<UserAddress>> GetAllAsync() => await _repository.GetAllAsync();
-    public async Task<UserAddress> GetByIdAsync(int id) => await _repository.GetByIdAsync(id);
-    public async Task AddAsync(UserAddress entity) => _repository.AddAsync(entity);
-    public async Task UpdateAsync(UserAddress entity) => _repository.UpdateAsync(entity);
-    public async Task DeleteAsync(UserAddress entity) => _repository.DeleteAsync(entity);
+    public async Task<IEnumerable<UserAddress>> GetAllAsync() => await repository.GetAllAsync();
+    public async Task<UserAddress> GetByIdAsync(int id) => await repository.GetByIdAsync(id);
+    public async Task AddAsync(UserAddress entity) => repository.AddAsync(entity);
+    public async Task UpdateAsync(UserAddress entity) => repository.UpdateAsync(entity);
+    public async Task DeleteAsync(UserAddress entity) => repository.DeleteAsync(entity);
 }
