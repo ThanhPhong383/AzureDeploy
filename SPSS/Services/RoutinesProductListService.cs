@@ -7,7 +7,7 @@ public class RoutinesProductListService (IGenericRepository<RoutinesProductList>
 {
     public async Task<IEnumerable<RoutinesProductList>> GetAllAsync() => await repository.GetAllAsync();
     public async Task<RoutinesProductList> GetByIdAsync(int id) => await repository.GetByIdAsync(id);
-    public async Task AddAsync(RoutinesProductList entity) => repository.AddAsync(entity);
-    public async Task UpdateAsync(RoutinesProductList entity) => repository.UpdateAsync(entity);
-    public async Task DeleteAsync(RoutinesProductList entity) => repository.DeleteAsync(entity);
+    public async Task AddAsync(RoutinesProductList entity) => await repository.AddAsync(entity);
+    public async Task UpdateAsync(RoutinesProductList entity) => await repository.UpdateAsync(entity);
+    public async Task DeleteAsync(RoutinesProductList entity) => await repository.DeleteAsync(entity);
 }

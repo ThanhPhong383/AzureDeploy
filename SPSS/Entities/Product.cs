@@ -26,7 +26,7 @@ namespace SPSS.Entities
 
         [Required]
         public int StockQuantity { get; set; }
-
+        public string? ImageUrl { get; set; }
         public string? Ingredients { get; set; }
         public string? UsageInstructions { get; set; }
         public string? Benefits { get; set; }

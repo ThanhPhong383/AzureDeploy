@@ -11,6 +11,10 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using SPSS.Dto.Account;
 using System.Collections.Concurrent;
+using SPSS.Services.FirebaseStorageService;
+using SPSS.Mapper;
+using SPSS.Services.ProductService;
+using SPSS.Repositories.GenericRepository;
 
 namespace SPSS
 {
@@ -64,7 +68,7 @@ namespace SPSS
             .AddGoogle(options =>
             {
                 options.ClientId = builder.Configuration["Google:ClientId"];
-                options.ClientSecret = builder.Configuration["AGoogle:ClientSecret"];
+                options.ClientSecret = builder.Configuration["Google:ClientSecret"];
             });
 
             builder.Services.AddSwaggerGen(option =>
@@ -95,7 +99,14 @@ namespace SPSS
             });
 
             builder.Services.AddAuthorization();
+            builder.Services.AddAutoMapper(typeof(AutoMapperProfile));
+            builder.Services.AddScoped<IFirebaseStorageService, FirebaseStorageService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+
+            builder.Services.AddScoped<IProductService, ProductService>();
+          
+
 
             builder.Services.AddCors(options =>
             {
@@ -123,7 +134,11 @@ namespace SPSS
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
-                app.UseSwaggerUI();
+                app.UseSwaggerUI(c =>
+                {
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
+                    c.RoutePrefix = string.Empty; // Định tuyến trang Swagger
+                }); ;
             }
 
             app.UseCors("AllowAll");
