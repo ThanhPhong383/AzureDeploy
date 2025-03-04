@@ -3,18 +3,11 @@ using System.Collections.Generic;
 using SPSS.Entities;
 using SPSS.Repositories.GenericRepository;
 
-public class OrderItemService
+public class OrderItemService (IGenericRepository<OrderItem> repository)
 {
-    private readonly IGenericRepository<OrderItem> _repository;
-
-    public OrderItemService(IGenericRepository<OrderItem> repository)
-    {
-        _repository = repository;
-    }
-
-    public async Task<IEnumerable<OrderItem>> GetAllAsync() => await _repository.GetAllAsync();
-    public async Task<OrderItem> GetByIdAsync(int id) => await _repository.GetByIdAsync(id);
-    public async Task AddAsync(OrderItem entity) => _repository.AddAsync(entity);
-    public async Task UpdateAsync(OrderItem entity) => _repository.UpdateAsync(entity);
-    public async Task DeleteAsync(OrderItem entity) => _repository.DeleteAsync(entity);
+    public async Task<IEnumerable<OrderItem>> GetAllAsync() => await repository.GetAllAsync();
+    public async Task<OrderItem> GetByIdAsync(int id) => await repository.GetByIdAsync(id);
+    public async Task AddAsync(OrderItem entity) => repository.AddAsync(entity);
+    public async Task UpdateAsync(OrderItem entity) => repository.UpdateAsync(entity);
+    public async Task DeleteAsync(OrderItem entity) => repository.DeleteAsync(entity);
 }

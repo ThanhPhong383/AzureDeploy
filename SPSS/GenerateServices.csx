@@ -25,20 +25,13 @@ using System.Collections.Generic;
 using SPSS.Entities;
 using SPSS.Repositories.GenericRepository;
 
-public class {entityName}Service
+public class {entityName}Service (IGenericRepository<{entityName}> repository)
 {{
-    private readonly IGenericRepository<{entityName}> _repository;
-
-    public {entityName}Service(IGenericRepository<{entityName}> repository)
-    {{
-        _repository = repository;
-    }}
-
-    public async Task<IEnumerable<{entityName}>> GetAllAsync() => await _repository.GetAllAsync();
-    public async Task<{entityName}> GetByIdAsync(int id) => await _repository.GetByIdAsync(id);
-    public async Task AddAsync({entityName} entity) => _repository.AddAsync(entity);
-    public async Task UpdateAsync({entityName} entity) => _repository.UpdateAsync(entity);
-    public async Task DeleteAsync({entityName} entity) => _repository.DeleteAsync(entity);
+    public async Task<IEnumerable<{entityName}>> GetAllAsync() => await repository.GetAllAsync();
+    public async Task<{entityName}> GetByIdAsync(int id) => await repository.GetByIdAsync(id);
+    public async Task AddAsync({entityName} entity) => repository.AddAsync(entity);
+    public async Task UpdateAsync({entityName} entity) => repository.UpdateAsync(entity);
+    public async Task DeleteAsync({entityName} entity) => repository.DeleteAsync(entity);
 }}";
 
     string outputFilePath = Path.Combine(outputPath, $"{entityName}Service.cs");
@@ -46,4 +39,4 @@ public class {entityName}Service
     Console.WriteLine($"Generated: {outputFilePath}");
 }
 
-Console.WriteLine("🔥 Services generated successfully!");
+Console.WriteLine("Services generated successfully!");
