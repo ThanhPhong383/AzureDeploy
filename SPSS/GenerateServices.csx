@@ -29,9 +29,9 @@ public class {entityName}Service (IGenericRepository<{entityName}> repository)
 {{
     public async Task<IEnumerable<{entityName}>> GetAllAsync() => await repository.GetAllAsync();
     public async Task<{entityName}> GetByIdAsync(int id) => await repository.GetByIdAsync(id);
-    public async Task AddAsync({entityName} entity) => repository.AddAsync(entity);
-    public async Task UpdateAsync({entityName} entity) => repository.UpdateAsync(entity);
-    public async Task DeleteAsync({entityName} entity) => repository.DeleteAsync(entity);
+    public async Task AddAsync({entityName} entity) => await repository.AddAsync(entity);
+    public async Task UpdateAsync({entityName} entity) => await repository.UpdateAsync(entity);
+    public async Task DeleteAsync({entityName} entity) => await repository.DeleteAsync(entity);
 }}";
 
     string outputFilePath = Path.Combine(outputPath, $"{entityName}Service.cs");

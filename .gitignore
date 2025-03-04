@@ -403,3 +403,6 @@ FodyWeavers.xsd
 appsettings.json
 appsettings.Development.json
 appsettings.Production.json
+
+#Bỏ qua thư muc Config
+Config/
