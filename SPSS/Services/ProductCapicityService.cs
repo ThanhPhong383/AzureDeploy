@@ -7,7 +7,7 @@ public class ProductCapicityService (IGenericRepository<ProductCapicity> reposit
 {
     public async Task<IEnumerable<ProductCapicity>> GetAllAsync() => await repository.GetAllAsync();
     public async Task<ProductCapicity> GetByIdAsync(int id) => await repository.GetByIdAsync(id);
-    public async Task AddAsync(ProductCapicity entity) => repository.AddAsync(entity);
-    public async Task UpdateAsync(ProductCapicity entity) => repository.UpdateAsync(entity);
-    public async Task DeleteAsync(ProductCapicity entity) => repository.DeleteAsync(entity);
+    public async Task AddAsync(ProductCapicity entity) => await repository.AddAsync(entity);
+    public async Task UpdateAsync(ProductCapicity entity) => await repository.UpdateAsync(entity);
+    public async Task DeleteAsync(ProductCapicity entity) => await repository.DeleteAsync(entity);
 }
