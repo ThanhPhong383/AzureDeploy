@@ -3,18 +3,11 @@ using System.Collections.Generic;
 using SPSS.Entities;
 using SPSS.Repositories.GenericRepository;
 
-public class BlogService
+public class BlogService (IGenericRepository<Blog> repository)
 {
-    private readonly IGenericRepository<Blog> _repository;
-
-    public BlogService(IGenericRepository<Blog> repository)
-    {
-        _repository = repository;
-    }
-
-    public async Task<IEnumerable<Blog>> GetAllAsync() => await _repository.GetAllAsync();
-    public async Task<Blog> GetByIdAsync(int id) => await _repository.GetByIdAsync(id);
-    public async Task AddAsync(Blog entity) => _repository.AddAsync(entity);
-    public async Task UpdateAsync(Blog entity) => _repository.UpdateAsync(entity);
-    public async Task DeleteAsync(Blog entity) => _repository.DeleteAsync(entity);
+    public async Task<IEnumerable<Blog>> GetAllAsync() => await repository.GetAllAsync();
+    public async Task<Blog> GetByIdAsync(int id) => await repository.GetByIdAsync(id);
+    public async Task AddAsync(Blog entity) => repository.AddAsync(entity);
+    public async Task UpdateAsync(Blog entity) => repository.UpdateAsync(entity);
+    public async Task DeleteAsync(Blog entity) => repository.DeleteAsync(entity);
 }
