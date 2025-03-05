@@ -37,6 +37,14 @@ namespace SPSS.Controllers
             return Ok(productResponse);
         }
 
+
+        [HttpGet]
+        public async Task<IActionResult> GetProductList()
+        {
+            var list = await productService.GetAllAsync();
+            return Ok(list);
+        }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetProduct(int id)
         {
