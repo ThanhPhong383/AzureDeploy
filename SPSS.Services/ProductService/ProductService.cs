@@ -1,6 +1,5 @@
 
 using System.Collections.Generic;
-using AutoMapper;
 using SPSS.Entities;
 using SPSS.Repositories.GenericRepository;
 using SPSS.Services.FirebaseStorageService;

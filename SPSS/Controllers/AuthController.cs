@@ -88,6 +88,7 @@ namespace SPSS.Controllers
                 var token = authorizationHeader.Substring("Bearer ".Length).Trim();
                 var response = await authService.GoogleSetPasswordAsync(setPasswordDTO, token);
 
+
                 return Ok(response);
             }
             catch (Exception ex)

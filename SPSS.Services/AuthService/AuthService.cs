@@ -1,7 +1,7 @@
-﻿using Google.Apis.Auth;
+﻿
+using Google.Apis.Auth;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.Data;
-using Microsoft.AspNetCore.Identity.UI.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using SPSS.Data;
 using SPSS.Dto;
