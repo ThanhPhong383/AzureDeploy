@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity.Data;
+﻿using Microsoft.AspNetCore.Identity;
 using SPSS.Dto;
 using SPSS.Dto.Account;
 using SPSS.Entities;

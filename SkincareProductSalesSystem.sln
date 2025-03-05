@@ -1,9 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.12.35527.113 d17.12
+VisualStudioVersion = 17.12.35527.113
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SPSS", "SPSS\SPSS.csproj", "{86673045-A7FA-4CBF-B55C-61E278772A5D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SPSS.API", "SPSS\SPSS.API.csproj", "{86673045-A7FA-4CBF-B55C-61E278772A5D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SPSS.Repository", "SPSS.Repository\SPSS.Repository.csproj", "{5FDAED05-773E-448D-9374-BE1C5368AF04}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SPSS.Service", "SPSS.Services\SPSS.Service.csproj", "{19059B63-530A-4982-AA99-C2CC7D977669}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +19,14 @@ Global
 		{86673045-A7FA-4CBF-B55C-61E278772A5D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{86673045-A7FA-4CBF-B55C-61E278772A5D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{86673045-A7FA-4CBF-B55C-61E278772A5D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5FDAED05-773E-448D-9374-BE1C5368AF04}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5FDAED05-773E-448D-9374-BE1C5368AF04}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5FDAED05-773E-448D-9374-BE1C5368AF04}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5FDAED05-773E-448D-9374-BE1C5368AF04}.Release|Any CPU.Build.0 = Release|Any CPU
+		{19059B63-530A-4982-AA99-C2CC7D977669}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{19059B63-530A-4982-AA99-C2CC7D977669}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{19059B63-530A-4982-AA99-C2CC7D977669}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{19059B63-530A-4982-AA99-C2CC7D977669}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

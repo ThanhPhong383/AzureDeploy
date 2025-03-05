@@ -1,4 +1,6 @@
-﻿namespace SPSS.Dto.Request
+﻿using Microsoft.AspNetCore.Http;
+
+namespace SPSS.Dto.Request
 {
     public class ProductRequest
     {
