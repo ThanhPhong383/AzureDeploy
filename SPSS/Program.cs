@@ -15,6 +15,7 @@ using SPSS.Services.FirebaseStorageService;
 using SPSS.Mapper;
 using SPSS.Services.ProductService;
 using SPSS.Repositories.GenericRepository;
+using System;
 
 namespace SPSS
 {
@@ -23,11 +24,13 @@ namespace SPSS
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            var googleClientId = builder.Configuration["Google:ClientId"];
+            var googleClientSecret = builder.Configuration["Google:ClientSecret"];
 
+            builder.Services.AddSwaggerGen();
             builder.Services.AddControllers();
 
             builder.Services.AddEndpointsApiExplorer(); //swagger
-            builder.Services.AddSwaggerGen();
 
             builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("SPSSDatabase")));
 
@@ -41,6 +44,11 @@ namespace SPSS
             })
              .AddEntityFrameworkStores<AppDbContext>()
              .AddDefaultTokenProviders();
+            if (string.IsNullOrEmpty(googleClientId) || string.IsNullOrEmpty(googleClientSecret))
+            {
+                throw new InvalidOperationException("Missing Google OAuth configuration in appsettings.json.");
+            }
+
 
             var secretKey = builder.Configuration["AppSettings:Token"];
             if (string.IsNullOrEmpty(secretKey))
@@ -62,7 +70,9 @@ namespace SPSS
                     ValidateAudience = true,
                     ValidAudience = builder.Configuration["AppSettings:Audience"],
                     IssuerSigningKey = new SymmetricSecurityKey(key),
-                    ValidateIssuerSigningKey = true
+                    ValidateIssuerSigningKey = true,
+                    ValidateLifetime = true, // Thêm vào đây
+                    ClockSkew = TimeSpan.FromMinutes(1)  // Loại bỏ thời gian trễ mặc định (5 phút)
                 };
             })
             .AddGoogle(options =>
@@ -73,30 +83,38 @@ namespace SPSS
 
             builder.Services.AddSwaggerGen(option =>
             {
+                option.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Title = "SPSS API",
+                    Version = "v1"
+                });
+
                 option.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
                     In = ParameterLocation.Header,
-                    Description = "Please enter a valid token",
+                    Description = "Enter 'Bearer' [space] and your token",
                     Name = "Authorization",
                     Type = SecuritySchemeType.Http,
-                    BearerFormat = "JWT",
-                    Scheme = "Bearer"
+                    Scheme = "Bearer",
+                    BearerFormat = "JWT"
                 });
+
                 option.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
                 {
-                    {
-                        new OpenApiSecurityScheme
-                        {
-                            Reference = new OpenApiReference
-                            {
-                                Type = ReferenceType.SecurityScheme,
-                                Id = "Bearer"
-                            }
-                        },
-                        new string[] { }
-                    }
-                });
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] { "" }
+        }
+    });
             });
+
 
             builder.Services.AddAuthorization();
             builder.Services.AddAutoMapper(typeof(AutoMapperProfile));
@@ -118,32 +136,61 @@ namespace SPSS
                 });
             });
             // Cấu hình Email Service
-            var emailConfig = builder.Configuration.GetSection("EmailConfiguration").Get<EmailConfiguration>()
-                  ?? throw new InvalidOperationException("Missing Email Configuration in appsettings.json.");
+            var emailConfigSection = builder.Configuration.GetSection("EmailConfiguration");
+            if (!emailConfigSection.Exists())
+            {
+                throw new InvalidOperationException("Email Configuration section is missing in appsettings.json.");
+            }
+
+            var emailConfig = emailConfigSection.Get<EmailConfiguration>();
+            if (emailConfig == null)
+            {
+                throw new InvalidOperationException("Email Configuration is null or improperly formatted.");
+            }
+            //Console.WriteLine($"Email Config: {emailConfig?.From}"); // Debug xem giá trị có đúng không
+            if (emailConfig != null)
+            {
+                Console.WriteLine($"Email Config: {emailConfig.From}");
+            }
+            else
+            {
+                Console.WriteLine("Email Configuration is NULL!");
+            }
 
             builder.Services.Configure<EmailConfiguration>(builder.Configuration.GetSection("EmailConfiguration"));
             builder.Services.AddSingleton(emailConfig);
             builder.Services.AddSingleton(new ConcurrentDictionary<string, OtpEntry>());
             builder.Services.AddTransient<IEmailService, EmailService>();
+            var connectionString = builder.Configuration.GetConnectionString("SPSSDatabase");
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                throw new InvalidOperationException("Database connection string is missing or empty in appsettings.json.");
+            }
+            Console.WriteLine($"Database Connection String: {connectionString}");
+            Console.WriteLine($"[INFO] Database Connection String Loaded: {connectionString}");
 
-
+            if (emailConfig == null)
+            {
+                throw new InvalidOperationException("Email configuration is null.");
+            }
+            builder.Services.AddSingleton(emailConfig);
 
 
             var app = builder.Build();
 
-            if (app.Environment.IsDevelopment())
+            if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
-                //app.UseSwaggerUI(c =>
-                //{
-                //    c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
-                //    c.RoutePrefix = string.Empty; // Định tuyến trang Swagger
-                //}); ;
-
             }
 
-            app.UseCors("AllowAll");
+
+            app.UseCors(policy =>
+            {
+                policy.AllowAnyOrigin()
+                      .AllowAnyHeader()
+                      .AllowAnyMethod();
+            });
             app.UseHttpsRedirection();
             app.UseAuthentication();
             app.UseAuthorization();
